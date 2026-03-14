@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dev editor </title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/editor/editor.main.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;500&display=swap');
+        
+        :root {
+            --bg-dark: #0d0d0d;
+            --bg-editor: #1e1e1e;
+            --bg-side: #252526;
+            --bg-activity: #333333;
+            --accent: #007acc;
+            --border: #2b2b2b;
+            --tab-inactive: #2d2d2d;
+            --text-muted: #858585;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #cccccc; height: 100vh; overflow: hidden; margin: 0; }
+        
+        /* Layout Grid */
+        .vs-grid { display: grid; grid-template-rows: 35px 1fr 25px; height: 100vh; }
+        .vs-body { display: flex; overflow: hidden; }
+
+        /* Activity Bar (Lateral Fina) */
+        .activity-bar { width: 48px; background: var(--bg-activity); display: flex; flex-direction: column; align-items: center; border-right: 1px solid #111; }
+        .act-icon { padding: 12px; font-size: 22px; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
+        .act-icon.active { color: #fff; border-left: 2px solid var(--accent); background: #2a2d2e; }
+
+        /* Sidebar / Explorer */
+        .side-pane { width: 260px; background: var(--bg-side); border-right: 1px solid #000; display: flex; flex-direction: column; transition: 0.3s; }
+        .pane-header { padding: 10px 15px; font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .file-item { padding: 4px 15px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ccc; transition: 0.1s; position: relative; }
+        .file-item:hover { background: #2a2d2e; }
+        .file-item.active { background: #37373d; color: white; }
+        .delete-btn { position: absolute; right: 10px; opacity: 0; color: #ff5f56; transition: 0.2s; }
+        .file-item:hover .delete-btn { opacity: 1; }
+
+        /* Tabs */
+        .tabs-container { height: 35px; background: var(--bg-side); display: flex; overflow-x: auto; border-bottom: 1px solid #111; }
+        .tab { min-width: 120px; height: 100%; display: flex; align-items: center; padding: 0 12px; background: var(--tab-inactive); border-right: 1px solid var(--bg-dark); font-size: 13px; cursor: pointer; opacity: 0.7; }
+        .tab.active { background: var(--bg-editor); opacity: 1; border-top: 1px solid var(--accent); color: white; }
+
+        /* Editor Area */
+        #editor-container { flex: 1; height: 100%; width: 100%; overflow: hidden; }
+
+        /* Preview Pane (Split Screen) */
+        #preview-pane { display: none; width: 45%; border-left: 2px solid #000; background: white; z-index: 10; }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* Icon Colors */
+        .icon-html { color: #e34c26; }
+        .icon-css { color: #264de4; }
+        .icon-js { color: #f7df1e; }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+    </style>
+</head>
+<body>
+
+<div class="vs-grid">
+    <header class="bg-[#323233] flex items-center justify-between px-3 border-b border-black z-50">
+        <div class="flex items-center gap-4 text-[12px]">
+            <i class="fa-brands fa-microsoft text-blue-500 text-base"></i>
+            <div class="flex gap-4">
+                <span class="hover:bg-[#454545] px-2 py-0.5 rounded cursor-pointer" onclick="createNew('file')">Novo Arquivo</span>
+                <span class="hover:bg-[#454545] px-2 py-0.5 rounded cursor-pointer" onclick="toggleSidebar()">Ver</span>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <button onclick="downloadProject()" class="bg-[#2ea043] hover:bg-[#3fb950] text-white px-3 py-1 rounded text-[11px] font-bold transition">
+                <i class="fa-solid fa-file-zipper mr-1"></i> EXPORTAR .ZIP
+            </button>
+            <button onclick="togglePreview()" class="bg-[#007acc] hover:bg-[#1f8ad2] text-white px-3 py-1 rounded text-[11px] font-bold">
+                <i class="fa-solid fa-play mr-1"></i> LIVE PREVIEW
+            </button>
+            <button onclick="openFullPreview()" class="bg-[#3c3c3c] hover:bg-[#4d4d4d] text-white px-3 py-1 rounded text-[11px] border border-[#555]">
+                <i class="fa-solid fa-up-right-from-square"></i> NOVA ABA
+            </button>
+        </div>
+    </header>
+
+    <div class="vs-body">
+        <nav class="activity-bar">
+            <div class="act-icon active"><i class="fa-regular fa-copy"></i></div>
+            <div class="act-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+            <div class="act-icon mt-auto"><i class="fa-solid fa-gear"></i></div>
+        </nav>
+
+        <aside id="sidebar" class="side-pane">
+            <div class="pane-header">
+                <span>Explorador</span>
+                <div class="flex gap-2">
+                    <i class="fa-solid fa-file-circle-plus cursor-pointer hover:text-white" onclick="createNew('file')"></i>
+                    <i class="fa-solid fa-folder-plus cursor-pointer hover:text-white" onclick="createNew('folder')"></i>
+                </div>
+            </div>
+            <div id="file-tree" class="flex-1 overflow-y-auto mt-2"></div>
+        </aside>
+
+        <main class="flex-1 flex flex-col min-w-0 bg-[#1e1e1e]">
+            <div id="tab-bar" class="tabs-container"></div>
+            <div class="flex-1 flex relative">
+                <div id="editor-container"></div>
+                <div id="preview-pane">
+                    <iframe id="live-frame"></iframe>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="bg-[#007acc] flex items-center justify-between px-3 text-[11px] text-white">
+        <div class="flex items-center gap-4">
+            <span><i class="fa-solid fa-code-branch mr-1"></i> main*</span>
+            <span id="save-status">✓ Sincronizado</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <span id="pos-indicator">Lin 1, Col 1</span>
+            <span id="lang-indicator" class="font-bold">HTML</span>
+        </div>
+    </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+<script>
+    let editor;
+    let fileSystem = JSON.parse(localStorage.getItem('vs-clone-v4')) || [
+        { id: '1', name: 'index.html', content: '<h1>🚀 VS Code Clone</h1>\n<p>Edite o CSS e JS!</p>\n<button onclick="teste()">Botão</button>', type: 'file' },
+        { id: '2', name: 'style.css', content: 'body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; }', type: 'file' },
+        { id: '3', name: 'script.js', content: 'function teste() {\n  alert("Funcionando tudo!");\n}', type: 'file' }
+    ];
+    let currentFile = fileSystem[0];
+
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+        editor = monaco.editor.create(document.getElementById('editor-container'), {
+            value: currentFile.content,
+            language: getLang(currentFile.name),
+            theme: 'vs-dark',
+            fontSize: 14,
+            fontFamily: 'Fira Code',
+            automaticLayout: true,
+            minimap: { enabled: true }
+        });
+
+        editor.onDidChangeModelContent(() => {
+            currentFile.content = editor.getValue();
+            localStorage.setItem('vs-clone-v4', JSON.stringify(fileSystem));
+            if(document.getElementById('preview-pane').style.display === 'block') updatePreview();
+        });
+
+        editor.onDidChangeCursorPosition(e => {
+            document.getElementById('pos-indicator').innerText = `Lin ${e.position.lineNumber}, Col ${e.position.column}`;
+        });
+
+        renderUI();
+    });
+
+    function getLang(name) {
+        const ext = name.split('.').pop();
+        if(ext === 'js') return 'javascript';
+        if(ext === 'css') return 'css';
+        return 'html';
+    }
+
+    function getIcon(name) {
+        const ext = name.split('.').pop();
+        if(ext === 'html') return 'fa-brands fa-html5 icon-html';
+        if(ext === 'css') return 'fa-brands fa-css3-alt icon-css';
+        if(ext === 'js') return 'fa-brands fa-js icon-js';
+        return 'fa-solid fa-file-code';
+    }
+
+    function renderUI() {
+        const tree = document.getElementById('file-tree');
+        const tabBar = document.getElementById('tab-bar');
+        tree.innerHTML = ''; tabBar.innerHTML = '';
+
+        fileSystem.forEach(item => {
+            // Lateral
+            const div = document.createElement('div');
+            div.className = `file-item ${item.id === currentFile.id ? 'active' : ''}`;
+            div.innerHTML = `
+                <i class="${item.type === 'folder' ? 'fa-solid fa-folder text-yellow-500' : getIcon(item.name)}"></i>
+                <span>${item.name}</span>
+                <i class="fa-solid fa-trash-can delete-btn" onclick="deleteItem('${item.id}', event)"></i>
+            `;
+            div.onclick = () => switchFile(item);
+            tree.appendChild(div);
+
+            // Abas
+            if(item.id === currentFile.id) {
+                const tab = document.createElement('div');
+                tab.className = `tab active`;
+                tab.innerHTML = `<i class="${getIcon(item.name)} mr-2"></i> ${item.name}`;
+                tabBar.appendChild(tab);
+            }
+        });
+        document.getElementById('lang-indicator').innerText = getLang(currentFile.name).toUpperCase();
+    }
+
+    function switchFile(item) {
+        if(item.type === 'folder') return;
+        currentFile = item;
+        monaco.editor.setModelLanguage(editor.getModel(), getLang(item.name));
+        editor.setValue(item.content);
+        renderUI();
+        updatePreview();
+    }
+
+    function createNew(type) {
+        const name = prompt(type === 'folder' ? "Nome da pasta:" : "Nome do arquivo (ex: login.html):");
+        if(!name) return;
+        const newItem = { id: Date.now().toString(), name: name, content: '', type: type };
+        fileSystem.push(newItem);
+        if(type === 'file') switchFile(newItem);
+        else renderUI();
+    }
+
+    function deleteItem(id, e) {
+        e.stopPropagation();
+        if(confirm("Apagar?")) {
+            fileSystem = fileSystem.filter(i => i.id !== id);
+            if(currentFile.id === id) switchFile(fileSystem[0] || {name:'none', content:'', id:'0'});
+            else renderUI();
+        }
+    }
+
+    function compileCode() {
+        let html = "", css = "", js = "";
+        fileSystem.forEach(f => {
+            if(f.name.endsWith('.html')) html += f.content;
+            if(f.name.endsWith('.css')) css += `<style>${f.content}</style>`;
+            if(f.name.endsWith('.js')) js += `<script>${f.content}<\/script>`;
+        });
+        return `<!DOCTYPE html><html><head>${css}</head><body>${html}${js}</body></html>`;
+    }
+
+    function togglePreview() {
+        const pane = document.getElementById('preview-pane');
+        pane.style.display = pane.style.display === 'block' ? 'none' : 'block';
+        editor.layout();
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const frame = document.getElementById('live-frame');
+        frame.srcdoc = compileCode();
+    }
+
+    function openFullPreview() {
+        const blob = new Blob([compileCode()], { type: 'text/html' });
+        window.open(URL.createObjectURL(blob), '_blank');
+    }
+
+    function downloadProject() {
+        const zip = new JSZip();
+        fileSystem.forEach(f => {
+            if(f.type === 'file') zip.file(f.name, f.content);
+        });
+        zip.generateAsync({type:"blob"}).then(blob => saveAs(blob, "projeto.zip"));
+    }
+
+    function toggleSidebar() {
+        const s = document.getElementById('sidebar');
+        s.style.width = s.style.width === '0px' ? '260px' : '0px';
+        setTimeout(() => editor.layout(), 310);
+    }
+</script>
+</body>
+</html>
