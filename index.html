@@ -2,67 +2,79 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>JS-GO: Full Combat V2</title>
+    <title>JS-GO: ARENA COMPLETA</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Press Start 2P', cursive; user-select: none; }
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
-        #ui { position: absolute; top: 20px; left: 20px; color: #0f0; z-index: 5; text-shadow: 2px 2px #000; pointer-events: none; font-size: 14px; }
-        #health-bar { width: 180px; height: 18px; border: 2px solid #0f0; margin-top: 5px; background: #002200; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Press Start 2P', cursive; user-select: none; }
+        
+        /* Interface de Jogo */
+        #ui { position: absolute; top: 20px; left: 20px; color: #0f0; z-index: 5; text-shadow: 2px 2px #000; pointer-events: none; font-size: 10px; }
+        #health-bar { width: 180px; height: 15px; border: 2px solid #0f0; margin-top: 5px; background: #002200; }
         #health-val { width: 100%; height: 100%; background: #0f0; transition: 0.3s; }
-        #crosshair {
-            position: absolute; top: 50%; left: 50%; width: 12px; height: 12px;
-            border: 2px solid #0f0; transform: translate(-50%, -50%); pointer-events: none; display: none;
+        
+        #crosshair { 
+            position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; 
+            border: 2px solid #0f0; transform: translate(-50%, -50%); 
+            pointer-events: none; display: none; 
         }
-        #menu, #game-over {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); color: white;
-            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20;
+        
+        /* Menus e Telas */
+        #menu, #game-over { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.95); color: white; 
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; z-index: 20; text-align: center; 
         }
-        .btn { padding: 15px 30px; cursor: pointer; background: #0f0; border: none; font-weight: bold; margin: 10px; color: #000; min-width: 200px; font-family: 'Press Start 2P', cursive; }
-        .btn:disabled { background: #333; cursor: not-allowed; }
-        input { padding: 12px; width: 320px; text-align: center; margin: 10px; border: 1px solid #0f0; background: #111; color: #0f0; font-size: 16px; font-family: 'Press Start 2P', cursive; }
-        #status { color: #fbff00; margin-top: 15px; font-weight: bold; font-size: 12px; }
-        #resume-hint { position: absolute; bottom: 20px; width: 100%; text-align: center; color: white; display: none; z-index: 5; font-size: 12px; }
-        #game-over h1 { font-size: 40px; margin-bottom: 20px; }
-        #game-over p { font-size: 20px; margin-bottom: 30px; }
-        #game-over #outcome { color: #fbff00; }
+        
+        .btn { 
+            padding: 15px 30px; cursor: pointer; background: #0f0; border: none; 
+            margin: 10px; color: #000; min-width: 280px; 
+            font-family: 'Press Start 2P', cursive; font-size: 10px; 
+        }
+        .btn-red { background: #ff4444; color: white; }
+        
+        input { 
+            padding: 12px; width: 320px; text-align: center; margin: 10px; 
+            border: 1px solid #0f0; background: #111; color: #0f0; 
+            font-family: 'Press Start 2P', cursive; font-size: 10px;
+        }
+        
+        #status { color: #fbff00; margin-top: 15px; font-size: 10px; }
+        #resume-hint { position: absolute; bottom: 20px; width: 100%; text-align: center; color: white; display: none; font-size: 10px; }
     </style>
 </head>
 <body onclick="requestLock()">
 
     <div id="ui">
-        ARENA P2P | <span id="peer-status" style="color:red">OFFLINE</span><br>
         HP: <div id="health-bar"><div id="health-val"></div></div>
     </div>
     
     <div id="crosshair"></div>
-    <div id="resume-hint">CLIQUE NA TELA PARA VOLTAR AO JOGO</div>
+    <div id="resume-hint">CLIQUE NA TELA PARA VOLTAR</div>
 
     <div id="menu">
-        <h1>JS-GO: ARENA STABLE</h1>
-        <div id="setup">
-            <button id="hostBtn" class="btn" onclick="createRoom()">1. GERAR MEU ID</button>
-            <p style="text-align:center">OU</p>
-            <input type="text" id="joinId" placeholder="COLE O ID DO ADVERSÁRIO">
-            <button id="joinBtn" class="btn" style="background: #00ffcc;" onclick="joinRoom()">2. CONECTAR E JOGAR</button>
-        </div>
-        <p id="status">PeerJS pronto.</p>
+        <h1>JS-GO P2P</h1>
+        <button id="hostBtn" class="btn" onclick="createRoom()">1. GERAR ID DA SALA</button>
+        <p>OU</p>
+        <input type="text" id="joinId" placeholder="COLE ID DO AMIGO">
+        <button class="btn" style="background: #00ffcc;" onclick="joinRoom()">2. ENTRAR NA ARENA</button>
+        <p id="status">Aguardando PeerJS...</p>
     </div>
 
     <div id="game-over" style="display:none;">
-        <h1 id="outcome-message"></h1>
-        <p>Aguardando reinício...</p>
-        <button class="btn" onclick="location.reload()">REINICIAR</button>
+        <h1 id="outcome-message">FIM</h1>
+        <p>A PARTIDA TERMINOU</p>
+        <button class="btn btn-red" onclick="location.reload()">VOLTAR AO MENU</button>
     </div>
 
     <script type="module">
         import * as THREE from 'https://cdn.skypack.dev/three@0.136.0';
 
-        // --- CENA ---
+        // --- ENGINE ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0a0a);
+        scene.background = new THREE.Color(0x050505);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -75,37 +87,35 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'square';
-            osc.frequency.setValueAtTime(400, audioCtx.currentTime); // Pitch inicial
-            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05); // Rapidamente para baixo
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + 0.1);
         }
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-        scene.add(new THREE.GridHelper(100, 40, 0x004400, 0x222222));
+        // --- CENÁRIO ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        scene.add(new THREE.GridHelper(100, 40, 0x00ff00, 0x222222));
 
-        // Obstáculos
-        const boxGeo = new THREE.BoxGeometry(3, 2.5, 3);
-        const boxMat = new THREE.MeshStandardMaterial({color: 0x444444});
+        const boxGeo = new THREE.BoxGeometry(3, 3, 3);
+        const boxMat = new THREE.MeshStandardMaterial({color: 0x333333});
         for(let i=0; i<12; i++) {
             const box = new THREE.Mesh(boxGeo, boxMat);
-            box.position.set(Math.random()*40-20, 1.25, Math.random()*40-20);
+            box.position.set(Math.random()*60-30, 1.5, Math.random()*60-30);
             scene.add(box);
         }
 
-        // --- PLAYER LOCAL ---
+        // --- PLAYERS ---
         const player = new THREE.Group();
         player.add(camera);
         scene.add(player);
-        player.position.set(Math.random()*10-5, 1.6, 10); 
+        player.position.set(Math.random()*10-5, 1.6, 15);
 
-        const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.45), new THREE.MeshStandardMaterial({color: 0x222222}));
+        const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.45), new THREE.MeshStandardMaterial({color: 0x111111}));
         gun.position.set(0.3, -0.25, -0.5);
         camera.add(gun);
 
-        // --- ADVERSÁRIO (MODELO E ANIMAÇÃO DE MORTE) ---
         const enemy = new THREE.Group();
         const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.4), new THREE.MeshStandardMaterial({color: 0xff0000}));
         body.position.y = 0.9;
@@ -113,53 +123,32 @@
         enemy.visible = false;
         scene.add(enemy);
 
-        // Para a animação de morte do inimigo
-        enemy.userData = { isDead: false, deathAnimProgress: 0 }; 
-
-        // --- MULTIPLAYER P2P ---
+        // --- REDE P2P ---
         const peer = new Peer();
         let conn;
         let hp = 100;
-        let isGameStarted = false;
-        let gameActive = true; // Controla se o jogo está rodando
+        let gameActive = true;
+        let isDead = false;
 
         window.createRoom = () => {
-            document.getElementById('status').innerText = "Gerando ID...";
-            if (peer.id) {
-                showID(peer.id);
-            } else {
-                peer.on('open', id => showID(id));
-                peer.on('error', err => {
-                    document.getElementById('status').innerText = "Erro PeerJS: " + err.type + ". Tente novamente.";
-                    console.error("PeerJS error:", err);
-                });
-            }
+            if(!peer.id) return alert("PeerJS ainda carregando...");
+            window.prompt("Copie este ID e mande para seu amigo:", peer.id);
+            document.getElementById('status').innerText = "Aguardando conexão...";
         };
-
-        function showID(id) {
-            document.getElementById('status').innerText = "ID GERADO!";
-            window.prompt("Mande este ID para o oponente:", id);
-        }
 
         window.joinRoom = () => {
             const id = document.getElementById('joinId').value;
             if(!id) return alert("Insira um ID!");
             conn = peer.connect(id);
-            setupConnEvents();
+            setupConn();
         };
 
-        peer.on('connection', c => {
-            conn = c;
-            setupConnEvents();
-        });
+        peer.on('connection', c => { conn = c; setupConn(); });
 
-        function setupConnEvents() {
+        function setupConn() {
             conn.on('open', () => {
-                isGameStarted = true;
                 document.getElementById('menu').style.display = 'none';
                 document.getElementById('crosshair').style.display = 'block';
-                document.getElementById('peer-status').innerText = "ONLINE";
-                document.getElementById('peer-status').style.color = "#0f0";
                 enemy.visible = true;
                 requestLock();
             });
@@ -173,119 +162,86 @@
                     body.material.color.set(0xffffff);
                     setTimeout(() => body.material.color.set(0xff0000), 50);
                 }
-                if(data.type === 'hit') {
-                    hp -= 15;
+                if(data.type === 'hit' && !isDead) {
+                    hp -= 20;
                     document.getElementById('health-val').style.width = hp + "%";
-                    if(hp <= 0 && gameActive) {
-                        gameActive = false;
-                        conn.send({ type: 'outcome', result: 'win' }); // Envia vitória para o outro
-                        showGameOver("Você Perdeu! :(");
-                    }
+                    if(hp <= 0) die();
                 }
-                if(data.type === 'outcome') {
-                    if(data.result === 'win' && gameActive) {
-                        gameActive = false;
-                        showGameOver("Você Venceu! :)");
-                    } else if (data.result === 'lose' && gameActive) {
-                        gameActive = false; // Garante que ambos parem
-                        showGameOver("Você Perdeu! :(");
-                    }
-                }
-                if(data.type === 'deathAnim') {
-                    enemy.userData.isDead = true;
-                    enemy.userData.deathAnimProgress = 0;
-                }
+                if(data.type === 'win') showGameOver("VOCÊ VENCEU!");
             });
         }
 
-        function showGameOver(message) {
+        function die() {
+            isDead = true;
+            gameActive = false;
+            conn.send({ type: 'win' }); 
+            showGameOver("VOCÊ PERDEU!");
+        }
+
+        function showGameOver(msg) {
+            gameActive = false;
+            document.exitPointerLock();
+            document.getElementById('outcome-message').innerText = msg;
             document.getElementById('game-over').style.display = 'flex';
-            document.getElementById('outcome-message').innerText = message;
-            document.exitPointerLock(); // Solta o mouse
             document.getElementById('crosshair').style.display = 'none';
         }
 
-        // --- POINTER LOCK ---
-        window.requestLock = () => {
-            if(isGameStarted && document.pointerLockElement !== document.body && gameActive) {
+        // --- CONTROLES ---
+        window.requestLock = () => { 
+            if(gameActive && document.getElementById('menu').style.display === 'none') {
                 document.body.requestPointerLock();
             }
         };
 
-        document.addEventListener('pointerlockchange', () => {
-            const isLocked = document.pointerLockElement === document.body;
-            document.getElementById('resume-hint').style.display = isLocked ? 'none' : 'block';
-            if (!isLocked && isGameStarted && gameActive) { // Se o mouse for solto e o jogo estiver ativo, mostra a dica
-                document.getElementById('resume-hint').style.display = 'block';
-            } else {
-                document.getElementById('resume-hint').style.display = 'none';
-            }
-        });
-
-        // --- CONTROLES E TIRO ---
         const keys = {};
         window.onkeydown = e => keys[e.code] = true;
         window.onkeyup = e => keys[e.code] = false;
 
         document.onmousemove = e => {
             if(document.pointerLockElement && gameActive) {
-                player.rotation.y -= e.movementX * 0.002;
-                camera.rotation.x -= e.movementY * 0.002;
+                player.rotation.y -= e.movementX * 0.0025;
+                camera.rotation.x -= e.movementY * 0.0025;
                 camera.rotation.x = Math.max(-1.4, Math.min(1.4, camera.rotation.x));
             }
         };
 
         const raycaster = new THREE.Raycaster();
         document.onmousedown = () => {
-            if(!document.pointerLockElement || !conn || !gameActive) return;
-            
+            if(!document.pointerLockElement || !gameActive) return;
             playShootSound();
             conn.send({ type: 'shoot' });
-            gun.position.z = -0.35; // Recuo
+            gun.position.z = -0.3;
 
             raycaster.setFromCamera({x:0, y:0}, camera);
-            const hits = raycaster.intersectObject(enemy, true);
-            if(hits.length > 0 && !enemy.userData.isDead) { // Só acerta se o inimigo não estiver morto
-                conn.send({ type: 'hit' });
-                // Animação de morte no inimigo se ele for atingido fatalmente (localmente)
-                // Isso seria melhor se o servidor (conn) decidisse, mas para P2P é aceitável aqui
-            }
+            if(raycaster.intersectObject(enemy, true).length > 0) conn.send({ type: 'hit' });
         };
 
-        // --- LOOP PRINCIPAL ---
         function animate() {
             requestAnimationFrame(animate);
-            
             if(document.pointerLockElement && gameActive) {
                 const s = 0.16;
                 if(keys.KeyW) player.translateZ(-s);
                 if(keys.KeyS) player.translateZ(s);
                 if(keys.KeyA) player.translateX(-s);
                 if(keys.KeyD) player.translateX(s);
-                player.position.y = 1.6;
+                player.position.y = 1.6; // Trava de altura
 
                 if(conn && conn.open) {
                     conn.send({ type: 'move', x: player.position.x, z: player.position.z, ry: player.rotation.y });
                 }
             }
             
-            // Animação de morte do inimigo
-            if (enemy.userData.isDead) {
-                enemy.userData.deathAnimProgress += 0.05;
-                const progress = enemy.userData.deathAnimProgress;
-                
-                // Rotaciona para cair e abaixa a posição
-                enemy.rotation.z = Math.min(Math.PI / 2, progress * Math.PI / 2); // Rotação no eixo Z para tombar
-                enemy.position.y = 0.9 * (1 - progress); // Abaixa para o chão
-                
-                if (progress >= 1) { // Quando a animação termina, o inimigo "desaparece"
-                    enemy.visible = false;
-                }
+            // Efeito de queda
+            if(isDead && player.rotation.z < 1.4) {
+                player.rotation.z += 0.08;
+                player.position.y -= 0.08;
             }
 
             gun.position.z += (-0.5 - gun.position.z) * 0.1;
             renderer.render(scene, camera);
         }
+        
+        peer.on('open', () => { document.getElementById('status').innerText = "PeerJS pronto."; });
         animate();
 
         window.addEventListener('resize', () => {
@@ -293,7 +249,6 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
     </script>
 </body>
 </html>
