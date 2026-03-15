@@ -2,161 +2,155 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>JS-GO: Single File Edition</title>
+    <title>JS-GO: Fix Edition</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #111; font-family: 'Courier New', Courier, monospace; }
-        #ui {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: #0f0;
-            text-shadow: 2px 2px #000;
-            pointer-events: none;
-            z-index: 10;
-        }
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
         #crosshair {
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 10px; height: 10px;
-            border: 2px solid #0f0;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
+            position: absolute; top: 50%; left: 50%;
+            width: 16px; height: 16px; border: 2px solid #0f0;
+            transform: translate(-50%, -50%); pointer-events: none;
         }
-        #instructions {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            background: rgba(0,0,0,0.8);
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            border: 2px solid #0f0;
+        #ui { position: absolute; top: 20px; left: 20px; color: #0f0; font-weight: bold; z-index: 5; }
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); color: white;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; z-index: 10;
         }
     </style>
 </head>
 <body>
 
-    <div id="ui">MUNICIÇÃO: <span id="ammo">30</span> / 90</div>
+    <div id="ui">KILLS: <span id="score">0</span> | AMMO: ∞</div>
     <div id="crosshair"></div>
-    <div id="instructions">
-        <h1>JS-GO</h1>
-        <p>CLIQUE PARA COMEÇAR</p>
-        <p>(W,A,S,D para mover | MOUSE para olhar | CLIQUE para atirar)</p>
+    <div id="overlay">
+        <h1>CS HTML - CORRIGIDO</h1>
+        <p>CLIQUE PARA JOGAR</p>
+        <small>W,A,S,D para mover | Mouse para olhar</small>
     </div>
 
     <script type="module">
         import * as THREE from 'https://cdn.skypack.dev/three@0.136.0';
 
-        // --- CONFIGURAÇÃO INICIAL ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111122);
-        scene.fog = new THREE.Fog(0x111122, 0, 50);
+        scene.background = new THREE.Color(0x111111);
+        scene.fog = new THREE.Fog(0x111111, 2, 50);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // --- ILUMINAÇÃO ---
-        const light = new THREE.HemisphereLight(0xeeeeff, 0x444422, 1);
-        scene.add(light);
-
-        // --- O JOGADOR (CÂMERA + ARMA) ---
-        const player = new THREE.Group();
-        player.add(camera);
-        scene.add(player);
-        player.position.y = 1.6;
-
-        // Criando uma "Arma" simples (Cubo alongado)
-        const weaponGeo = new THREE.BoxGeometry(0.1, 0.1, 0.5);
-        const weaponMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-        const weapon = new THREE.Mesh(weaponGeo, weaponMat);
-        weapon.position.set(0.3, -0.2, -0.5); // Posição na mão direita
-        camera.add(weapon);
-
-        // --- MAPA (CHÃO E PAREDES) ---
-        const floorGeo = new THREE.PlaneGeometry(100, 100);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        scene.add(floor);
-
-        // Adicionar alguns "Inimigos" (Alvos)
-        const targets = [];
-        for(let i=0; i<10; i++) {
-            const targetGeo = new THREE.BoxGeometry(1, 2, 1);
-            const targetMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-            const target = new THREE.Mesh(targetGeo, targetMat);
-            target.position.set(Math.random()*40-20, 1, Math.random()*40-20);
-            scene.add(target);
-            targets.push(target);
+        // Som de tiro
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playShootSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
         }
 
-        // --- LÓGICA DE CONTROLES ---
-        const menu = document.getElementById('instructions');
-        menu.addEventListener('click', () => document.body.requestPointerLock());
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const light = new THREE.PointLight(0xffffff, 1);
+        camera.add(light);
+        scene.add(camera);
 
-        document.addEventListener('pointerlockchange', () => {
-            menu.style.display = document.pointerLockElement ? 'none' : 'block';
+        // Mapa
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({color: 0x222222}));
+        floor.rotation.x = -Math.PI/2;
+        scene.add(floor);
+
+        // Paredes
+        for(let i=0; i<10; i++) {
+            const wall = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 0.5), new THREE.MeshStandardMaterial({color: 0x444444}));
+            wall.position.set(Math.random()*40-20, 1.5, Math.random()*40-20);
+            wall.rotation.y = Math.random() * Math.PI;
+            scene.add(wall);
+        }
+
+        // Arma
+        const gun = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.5), new THREE.MeshStandardMaterial({color: 0x000000}));
+        gun.position.set(0.3, -0.25, -0.5);
+        camera.add(gun);
+
+        // Inimigos
+        const enemies = [];
+        for(let i=0; i<6; i++) {
+            const enemy = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.8), new THREE.MeshStandardMaterial({color: 0xff0000}));
+            enemy.position.set(Math.random()*30-15, 0.9, Math.random()*30-15);
+            enemy.userData = { dir: Math.random() * Math.PI * 2 };
+            scene.add(enemy);
+            enemies.push(enemy);
+        }
+
+        let score = 0;
+        const keys = {};
+        const player = new THREE.Group();
+        player.position.y = 1.6;
+        player.add(camera);
+        scene.add(player);
+
+        document.getElementById('overlay').addEventListener('click', () => {
+            document.body.requestPointerLock();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         });
 
+        document.addEventListener('pointerlockchange', () => {
+            document.getElementById('overlay').style.display = document.pointerLockElement ? 'none' : 'flex';
+        });
+
+        // CORREÇÃO DA ROTAÇÃO (Inverti os sinais para ficar natural)
         document.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement) {
-                player.rotation.y -= e.movementX * 0.002;
-                camera.rotation.x -= e.movementY * 0.002;
-                camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
+            if(document.pointerLockElement) {
+                player.rotation.y -= e.movementX * 0.002; // Esquerda/Direita
+                camera.rotation.x -= e.movementY * 0.002; // Cima/Baixo
+                camera.rotation.x = Math.max(-1.4, Math.min(1.4, camera.rotation.x));
             }
         });
 
-        const keys = {};
         window.addEventListener('keydown', (e) => keys[e.code] = true);
         window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-        // --- SISTEMA DE TIRO ---
         const raycaster = new THREE.Raycaster();
-        let ammo = 30;
-
         window.addEventListener('mousedown', () => {
-            if (document.pointerLockElement && ammo > 0) {
-                ammo--;
-                document.getElementById('ammo').innerText = ammo;
+            if(!document.pointerLockElement) return;
+            playShootSound();
+            gun.position.z = -0.3; // Efeito de recuo
 
-                // Efeito de coice da arma
-                weapon.position.z = -0.4;
-                setTimeout(() => weapon.position.z = -0.5, 50);
-
-                // Verificar colisão do tiro
-                const direction = new THREE.Vector3();
-                camera.getWorldDirection(direction);
-                raycaster.set(camera.getWorldPosition(new THREE.Vector3()), direction);
-
-                const intersects = raycaster.intersectObjects(targets);
-                if (intersects.length > 0) {
-                    const hit = intersects[0].object;
-                    hit.material.color.set(0xffffff); // Pisca ao acertar
-                    setTimeout(() => {
-                        hit.position.y = -5; // "Elimina" o alvo jogando-o para baixo
-                    }, 100);
-                }
+            raycaster.setFromCamera({x:0, y:0}, camera);
+            const hits = raycaster.intersectObjects(enemies);
+            if(hits.length > 0) {
+                const target = hits[0].object;
+                score++;
+                document.getElementById('score').innerText = score;
+                target.position.set(Math.random()*40-20, 0.9, Math.random()*40-20);
             }
         });
 
-        // --- LOOP DE ANIMAÇÃO ---
         function animate() {
             requestAnimationFrame(animate);
-
-            if (document.pointerLockElement) {
-                const speed = 0.12;
-                if (keys['KeyW']) player.translateZ(-speed);
-                if (keys['KeyS']) player.translateZ(speed);
-                if (keys['KeyA']) player.translateX(-speed);
-                if (keys['KeyD']) player.translateX(speed);
+            if(document.pointerLockElement) {
+                const s = 0.15;
+                // CORREÇÃO DA MOVIMENTAÇÃO
+                if(keys.KeyW) player.translateZ(-s);
+                if(keys.KeyS) player.translateZ(s);
+                if(keys.KeyA) player.translateX(-s);
+                if(keys.KeyD) player.translateX(s);
             }
+            
+            enemies.forEach(en => {
+                en.position.x += Math.cos(en.userData.dir) * 0.04;
+                en.position.z += Math.sin(en.userData.dir) * 0.04;
+                if(Math.abs(en.position.x) > 30 || Math.abs(en.position.z) > 30) en.userData.dir += Math.PI;
+            });
 
+            gun.position.z += (-0.5 - gun.position.z) * 0.1;
             renderer.render(scene, camera);
         }
-
         animate();
 
         window.addEventListener('resize', () => {
@@ -164,7 +158,6 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
     </script>
 </body>
 </html>
